@@ -7,7 +7,10 @@ import numpy as np
 import pandas as pd
 import random
 import math
+<<<<<<< HEAD
 import warnings
+=======
+>>>>>>> 62cf7823286e88982159e97ecf52a7af181cb12c
 from tqdm import tqdm
 from glhmm.palm_functions import *
 from statsmodels.stats import multitest as smt
@@ -16,7 +19,10 @@ from collections import Counter
 from skimage.measure import label, regionprops
 from scipy.stats import ttest_ind, f_oneway, pearsonr, f, norm
 from itertools import combinations
+<<<<<<< HEAD
 from sklearn.model_selection import train_test_split
+=======
+>>>>>>> 62cf7823286e88982159e97ecf52a7af181cb12c
 
 
 def test_across_subjects(D_data, R_data, method="regression", Nperm=0, confounds = None, dict_family = None, verbose = True, test_statistics_option=False, FWER_correction=False, identify_categories=True, category_lim=10, test_combination=False):
@@ -465,6 +471,16 @@ def test_across_sessions_within_subject(D_data, R_data, idx_data, method="regres
         'Nperm' :The number of permutations that has been performed.
                   
     """ 
+<<<<<<< HEAD
+=======
+    # Check if differences between consecutive elements of idx_session are equal
+    if not np.all(np.diff(idx_data) == np.diff(idx_data)[0]):
+        raise ValueError("""
+            The number of trials within a session are different across sessions. 
+            Update your data so that the number of trials is the same within each session; 
+            otherwise, you cannot run the function 'test_across_sessions_within_subject'.
+            """)
+>>>>>>> 62cf7823286e88982159e97ecf52a7af181cb12c
     # Initialize variable
     category_columns = []  
     test_type = 'test_across_sessions'  
@@ -496,6 +512,7 @@ def test_across_sessions_within_subject(D_data, R_data, idx_data, method="regres
 
     # Calculate the maximum number of permutations
     max_permutations = math.factorial(len(np.unique(idx_array)))
+<<<<<<< HEAD
     # Using scientific notation format with string formatting
     exp_notation = "{:.2e}".format(max_permutations)
     if Nperm > max_permutations:
@@ -503,6 +520,13 @@ def test_across_sessions_within_subject(D_data, R_data, idx_data, method="regres
                     "Reduce the number of permutations to the maximum number of permutations to run the test properly.")
     if verbose:
         print(f"Maximum number of permutations with {len(np.unique(idx_array))} sessions is: {exp_notation}")
+=======
+    if Nperm > max_permutations:
+        raise ValueError(f"Maximum number of permutations with {len(np.unique(idx_array))} sessions is: {max_permutations}."
+                         "Reduce the number of permutations to the maximum number of permutations to run the test probably.")
+    if verbose:
+        print(f"Maximum number of permutations with {len(np.unique(idx_array))} sessions is: {max_permutations}")
+>>>>>>> 62cf7823286e88982159e97ecf52a7af181cb12c
     
     # Get input shape information
     n_T, _, n_p, n_q, D_data, R_data = get_input_shape(D_data, R_data, verbose)
@@ -755,10 +779,15 @@ def remove_nan_values(D_data, R_data, method):
 
     Parameters:
     -----------
+<<<<<<< HEAD
     D_data (numpy.ndarray)
+=======
+    D_data : numpy.ndarray
+>>>>>>> 62cf7823286e88982159e97ecf52a7af181cb12c
         Input data array containing features.
     R_data (numpy.ndarray): 
         Input data array containing response values.
+<<<<<<< HEAD
     method (str, optional), default="regression":     
         Statistical method for the permutation test. Valid options are 
         "regression", "univariate", "cca", "one_vs_rest" or "state_pairs". 
@@ -767,6 +796,12 @@ def remove_nan_values(D_data, R_data, method):
     Returns:
     ---------
     D_data (numpy.ndarray): 
+=======
+    
+    Returns:
+    ---------
+    D_data : numpy.ndarray
+>>>>>>> 62cf7823286e88982159e97ecf52a7af181cb12c
         Cleaned feature data (D_data) with NaN values removed.  
     R_data (numpy.ndarray): 
         Cleaned response data (R_data) with NaN values removed.
@@ -1200,7 +1235,11 @@ def initialize_permutation_matrices(method, Nperm, n_p, n_q, D_data, test_combin
         else:
             # Regression got a N by q matrix 
             test_statistics = np.zeros((Nperm, n_q))
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> 62cf7823286e88982159e97ecf52a7af181cb12c
         # Define regularization parameter
         regularization_parameter = 0.001
         # Create a regularization matrix (identity matrix scaled by the regularization parameter)
@@ -1744,7 +1783,7 @@ def test_statistics_calculations(Din, Rin, perm, test_statistics, reg_pinv, meth
                     # Calculate the explained sum of squares (ESS)
                     ess = tss - rss
                     # Calculate the degrees of freedom for the model and residuals
-                    df_model = Din.shape[1]  # Number of predictors including intercept
+                    df_model = Din.shape[1]  # Number of predictors
                     df_resid = Din.shape[0] - df_model
                     # Calculate the mean squared error (MSE) for the model and residuals
                     MSE_model = ess / df_model
@@ -1763,11 +1802,22 @@ def test_statistics_calculations(Din, Rin, perm, test_statistics, reg_pinv, meth
         else:
             # If we are doing test_combinations, we need to calculate f-statistics on every column
             if test_combination in [True, "across_columns"]:
+<<<<<<< HEAD
                 nan_values = np.sum(np.isnan(Rin))>0
                 # Calculate the explained variance if R got NaN values.
                 F_statistic =calculate_nan_regression_f_test(Din, Rin, reg_pinv, idx_data, permute_beta, perm, nan_values, beta)
                 # Calculate the degrees of freedom for the model and residuals
                 df_model = Din.shape[1]  # Number of predictors including intercept
+=======
+                if np.sum(np.isnan(Rin))>0:
+                    # Calculate the explained variance if R got NaN values.
+                    F_statistic =calculate_nan_regression_f_test(Din, Rin, proj, nan_values=True)
+                else:
+                    # Calculate F-statitics with no NaN values.
+                    F_statistic =calculate_nan_regression_f_test(Din, Rin, proj, nan_values=False)
+                     # Calculate the degrees of freedom for the model and residuals
+                df_model = Din.shape[1]  # Number of predictors
+>>>>>>> 62cf7823286e88982159e97ecf52a7af181cb12c
                 df_resid = Din.shape[0] - df_model
                 p_value = 1 - f.cdf(F_statistic, df_model, df_resid)
                 # Get the base statistics and store p-values as z-scores to the test statistic
@@ -2188,6 +2238,7 @@ def pval_cluster_based_correction(test_statistics, pval, alpha=0.05):
         
     Parameters:
     ------------
+<<<<<<< HEAD
     test_statistics (numpy.ndarray): 
         2D or 3D array of test statistics. 
         For 2D array, it has a shape of (timepoints, test_statistics)
@@ -2198,6 +2249,13 @@ def pval_cluster_based_correction(test_statistics, pval, alpha=0.05):
         For 1D array, it has a shape of (timepoints), and you got a single p-value pr. timepoint
         For 2D array, it has a shape (timepoints, p), where p represents the number of predictors/features. 
     alpha (float, optional), default=0.05: 
+=======
+    test_statistics : (numpy.ndarray)
+        2D or 3D array of test statistics. 2D if you have applied permutation testing using "regression".
+    pval : (numpy.ndarray)
+        2D or 1D array of p-values obtained from permutation testing. 1D if you have applied permutation testing using "regression".
+    alpha : (float, optional), default=0.05
+>>>>>>> 62cf7823286e88982159e97ecf52a7af181cb12c
         Significance level for cluster-based correction.
 
     Returns:
@@ -2822,7 +2880,7 @@ def calculate_nan_regression_f_test(Din, Rin, reg_pinv, idx_data, permute_beta, 
             # Calculate the explained sum of squares (ESS)
             ess = tss - rss
             # Calculate the degrees of freedom for the model and residuals
-            df_model = Din.shape[1]  # Number of predictors including intercept
+            df_model = Din.shape[1]  # Number of predictors
             df_resid = Din.shape[0] - df_model
             # Calculate the mean squared error (MSE) for the model and residuals
             MSE_model = ess / df_model
@@ -2853,7 +2911,7 @@ def calculate_nan_regression_f_test(Din, Rin, reg_pinv, idx_data, permute_beta, 
         # Calculate the explained sum of squares (ESS)
         ess = tss - rss
         # Calculate the degrees of freedom for the model and residuals
-        df_model = Din.shape[1]  # Number of predictors including intercept
+        df_model = Din.shape[1]  # Number of predictors
         df_resid = Din.shape[0] - df_model
         # Calculate the mean squared error (MSE) for the model and residuals
         MSE_model = ess / df_model
@@ -3264,7 +3322,11 @@ def detect_significant_intervals(pval, alpha):
 
     Parameters:
     ------------
+<<<<<<< HEAD
     p_values (numpy.ndarray): 
+=======
+    p_values : numpy.ndarray
+>>>>>>> 62cf7823286e88982159e97ecf52a7af181cb12c
         An array of p-values. 
     alpha (float, optional): 
         Threshold for significance.
@@ -3276,7 +3338,11 @@ def detect_significant_intervals(pval, alpha):
         (inclusive) of each interval of consecutive True values.
 
     Example:
+<<<<<<< HEAD
     ----------  
+=======
+    ----------
+>>>>>>> 62cf7823286e88982159e97ecf52a7af181cb12c
         array = [False, False, False, True, True, True, False, False, True, True, False]
         detect_intervals(array)
         output: [(3, 5), (8, 9)]
