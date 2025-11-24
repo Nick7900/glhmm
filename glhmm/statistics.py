@@ -3940,12 +3940,12 @@ def get_concatenate_sessions(D_sessions, R_sessions=None, idx_sessions=None):
     return np.array(D_con), np.array(R_con), idx_sessions_con
 
 
-def reconstruct_concatenated_to_3D(D_con, D_original=None, n_timepoints=None, n_entities=None, n_features = None):
+def reconstruct_concatenated_to_3D(D_con, D_data=None, n_timepoints=None, n_entities=None, n_features = None):
     """
     Reshape a concatenated 2D matrix back into its original 3D format (timepoints, trials, channels).
     
     This function converts a concatenated 2D matrix `D_con` (e.g., from HMM Gamma values)
-    back into its original 3D shape. If the original session matrix `D_original` is provided,
+    back into its original 3D shape. If the original session matrix `D_data` is provided,
     the function will infer the number of timepoints, trials, and channels from its shape. 
     Otherwise, the user must provide the correct dimensions.
     
@@ -3953,14 +3953,14 @@ def reconstruct_concatenated_to_3D(D_con, D_original=None, n_timepoints=None, n_
     ------------
     D_con (numpy.ndarray): 
         A 2D concatenated D-matrix of shape ((n_timepoints * n_entities), n_features).
-    D_original (numpy.ndarray, optional): 
+    D_data (numpy.ndarray, optional): 
         A 3D array containing the original D-matrices for each session, with shape (n_timepoints, n_entities, n_features).
     n_timepoints (int, optional): 
-        A number of timepoints per trial, is required if `D_original` is not provided.
+        A number of timepoints per trial, is required if `D_data` is not provided.
     n_entities (int, optional): 
-        A number of e.g. trials or subjects per session, is required if `D_original` is not provided.
+        A number of e.g. trials or subjects per session, is required if `D_data` is not provided.
     n_features (int, optional): 
-        Number of features (e.g. channels), required if `D_original` is not provided.
+        Number of features (e.g. channels), required if `D_data` is not provided.
 
     Returns:
     ---------
@@ -3970,19 +3970,19 @@ def reconstruct_concatenated_to_3D(D_con, D_original=None, n_timepoints=None, n_
     Raises:
     --------
     ValueError: 
-        If `D_original` is provided and is not a 3D numpy array, or if the provided dimensions do not match the shape of `D_con`.
-        If `n_timepoints`, `n_trials`, or `n_features` are not provided when `D_original` is missing.
+        If `D_data` is provided and is not a 3D numpy array, or if the provided dimensions do not match the shape of `D_con`.
+        If `n_timepoints`, `n_trials`, or `n_features` are not provided when `D_data` is missing.
         If the shape of `D_con` does not match the expected dimensions based on the input parameters.
     """
     # Input validation and initialization
-    if D_original is not None and len([arg for arg in [n_timepoints, n_entities, n_features] if arg is not None]) == 0:
-        if not isinstance(D_original, np.ndarray) or D_original.ndim != 3:
+    if D_data is not None and len([arg for arg in [n_timepoints, n_entities, n_features] if arg is not None]) == 0:
+        if not isinstance(D_data, np.ndarray) or D_data.ndim != 3:
             raise ValueError("Invalid input: D_original must be a 3D numpy array.")
-        n_timepoints, n_entities, n_features = D_original.shape
-        D_reconstruct = np.zeros_like(D_original)
+        n_timepoints, n_entities, n_features = D_data.shape
+        D_reconstruct = np.zeros_like(D_data)
     else:
         if None in [n_timepoints, n_entities, n_features]:
-            raise ValueError("Invalid input: n_timepoints, n_trials, and n_features must be provided if D_original is not provided.")
+            raise ValueError("Invalid input: n_timepoints, n_trials, and n_features must be provided if D_data is not provided.")
         D_reconstruct = np.zeros((n_timepoints, n_entities, n_features))
     
     # Check if the shape of D_con matches the expected shape
@@ -4068,8 +4068,8 @@ def pad_vpath(vpath, lag_val, indices_tde=None):
             vpath_pad = np.concatenate(vpath_list,axis=0)
     return vpath_pad
 
-def get_event_epochs(input_data, index_data, filtered_R_data, event_markers, 
-                               fs, fs_target=None, ms_before_stimulus=0, epoch_window_tp=None):
+def get_event_epochs(D_data, R_data, indices, event_markers, 
+                     fs, fs_target=None, ms_before_stimulus=0, epoch_window_tp=None):
     """
     Extract time-locked data epochs based on stimulus events.
 
@@ -4079,12 +4079,12 @@ def get_event_epochs(input_data, index_data, filtered_R_data, event_markers,
 
     Parameters:
     ------------
-    input_data (numpy.ndarray): 
+    D_data (numpy.ndarray): 
         2D array containing gamma values for the session, structured as ((number of timepoints * number of trials), number of states).
-    index_data (numpy.ndarray): 
-        2D array containing preprocessed indices for the session.
-    filtered_R_data (list): 
+    R_data (list): 
         List of filtered R data arrays for each session based on the events.
+    indices (numpy.ndarray): 
+        2D array containing preprocessed indices for the session.
     event_markers (list): 
         List of event information for each session.
     fs (int, optional): 
@@ -4122,7 +4122,7 @@ def get_event_epochs(input_data, index_data, filtered_R_data, event_markers,
     # Iterate over each event file corresponding to a session
     for idx, events in enumerate(event_markers):
         # Extract data values for the specific session using preprocessed indices
-        data_session = input_data[index_data[idx, 0]:index_data[idx, 1], :]
+        data_session = D_data[indices[idx, 0]:indices[idx, 1], :]
 
 
         # Downsample the event time indices
@@ -4158,7 +4158,7 @@ def get_event_epochs(input_data, index_data, filtered_R_data, event_markers,
             trial_count += 1  # Increment the trial counter
 
         # Append the filtered R data to the filtered_R_data_list
-        filtered_R_data_list.append(filtered_R_data[idx][valid_event_indices])
+        filtered_R_data_list.append(R_data[idx][valid_event_indices])
 
         # Store the count of valid epochs for this session in the valid_epoch_counts
         valid_epoch_counts.append(np.sum(valid_event_indices))

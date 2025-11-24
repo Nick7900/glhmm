@@ -546,7 +546,7 @@ def interpolate_colormap(cmap_list):
         modified_cmap [:,channel_idx]=con_values
     return modified_cmap
 
-def plot_p_value_matrix(pval_in, alpha = 0.05, normalize_vals=True, figsize=(9, 5), 
+def plot_p_value_matrix(pval, alpha = 0.05, normalize_vals=True, figsize=(9, 5), 
                         title_text="Heatmap (p-values)", fontsize_labels=12, fontsize_title=14, annot=False, 
                         cmap_type='default', cmap_reverse=True, xlabel="", ylabel="", 
                         xticklabels=None, yticklabels = None,x_tick_min=None, x_tick_max=None, num_x_ticks=None, num_y_ticks=None,  tick_positions = [0.001, 0.01, 0.05, 0.1, 0.3, 1], 
@@ -598,37 +598,37 @@ def plot_p_value_matrix(pval_in, alpha = 0.05, normalize_vals=True, figsize=(9, 
     save_path (str, optional), default=None
         If a string is provided, it saves the figure to that specified path
     """
-    if pval_in.ndim>2:
-        pval = np.squeeze(pval_in)
+    if pval.ndim>2:
+        pval_in = np.squeeze(pval)
         if pval.ndim>2:
             raise ValueError(f"The p-value is {pval.ndim} dimensional\n"
                     "Adjust your p-values so it becomes 2-dimensional")
 
     else:
-        pval = pval_in.copy()
-    if pval.ndim==0:
-        pval = np.reshape(pval, (1, 1))
+        pval_in = pval.copy()
+    if pval_in.ndim==0:
+        pval_in = np.reshape(pval_in, (1, 1))
     if xlabel_rotation==45:
         ha ="right"
     else:
         ha = "center" 
-    if pval.ndim==2:   
-        num_x_ticks = num_x_ticks if num_x_ticks is not None else pval.shape[1] if pval.shape[1]<20 else 5
-        num_y_ticks = num_y_ticks if num_y_ticks is not None else pval.shape[0] if pval.shape[0]<20 else 5
+    if pval_in.ndim==2:   
+        num_x_ticks = num_x_ticks if num_x_ticks is not None else pval_in.shape[1] if pval_in.shape[1]<20 else 5
+        num_y_ticks = num_y_ticks if num_y_ticks is not None else pval_in.shape[0] if pval_in.shape[0]<20 else 5
     else:
-        num_x_ticks = num_x_ticks if num_x_ticks is not None else pval.shape[0] if pval.shape[0]<20 else 5
+        num_x_ticks = num_x_ticks if num_x_ticks is not None else pval_in.shape[0] if pval_in.shape[0]<20 else 5
         #num_y_ticks = num_x_ticks if num_x_ticks is not None else pval.shape[0] if pval.shape[0]<20 else 5
 
     # Ensure p-values are within the log range
     pval_min = -3
-    pval[pval != 0] = np.clip(pval[pval != 0], 10**pval_min, 1)
+    pval_in[pval_in != 0] = np.clip(pval_in[pval_in != 0], 10**pval_min, 1)
 
     # Convert to log scale
     color_array = np.logspace(pval_min, 0, num_colors).reshape(1, -1)
     
     fig, axes = plt.subplots(figsize=figsize)
-    if len(pval.shape)==1:
-        pval =np.expand_dims(pval,axis=0)
+    if len(pval_in.shape)==1:
+        pval_in =np.expand_dims(pval_in,axis=0)
     if cmap_type=='default':
 
         if alpha == None and normalize_vals==False:
@@ -675,28 +675,28 @@ def plot_p_value_matrix(pval_in, alpha = 0.05, normalize_vals=True, figsize=(9, 
         # Set the value of 0 to white in the colormap
     if none_diagonal:
         # Create a copy of the pval matrix
-        pval_with_nan_diagonal = np.copy(pval)
+        pval_with_nan_diagonal = np.copy(pval_in)
 
         # Set the diagonal elements to NaN in the copied matrix
         np.fill_diagonal(pval_with_nan_diagonal, np.nan)
-        pval = pval_with_nan_diagonal.copy()
+        pval_in = pval_with_nan_diagonal.copy()
 
     if normalize_vals:
         norm = LogNorm(vmin=10**pval_min, vmax=1)
 
-        heatmap = sb.heatmap(pval, ax=axes, cmap=cmap, annot=annot, fmt=".3f", cbar=False, norm=norm)
+        heatmap = sb.heatmap(pval_in, ax=axes, cmap=cmap, annot=annot, fmt=".3f", cbar=False, norm=norm)
     else:
-        heatmap = sb.heatmap(pval, ax=axes, cmap=cmap, annot=annot, fmt=".3f", cbar=False)
+        heatmap = sb.heatmap(pval_in, ax=axes, cmap=cmap, annot=annot, fmt=".3f", cbar=False)
 
     # Add labels and title
     axes.set_xlabel(xlabel, fontsize=fontsize_labels)
     axes.set_ylabel(ylabel, fontsize=fontsize_labels)
     axes.set_title(title_text, fontsize=fontsize_title)
     # Number of x-tick steps
-    steps=len(pval)
+    steps=len(pval_in)
     
     # define x_ticks
-    x_tick_positions = np.linspace(0, pval.shape[1]-1, num_x_ticks).astype(int)
+    x_tick_positions = np.linspace(0, pval_in.shape[1]-1, num_x_ticks).astype(int)
 
     # Generate x-tick labels based on user input or default to time points
     if x_tick_min is not None and x_tick_max is not None:
@@ -704,7 +704,7 @@ def plot_p_value_matrix(pval_in, alpha = 0.05, normalize_vals=True, figsize=(9, 
         if np.all(x_tick_labels == x_tick_labels.astype(int)):
             x_tick_labels = x_tick_labels.astype(int)
     elif x_tick_min is not None:
-        x_tick_labels = np.linspace(x_tick_min, pval.shape[1], num_x_ticks).round(2)
+        x_tick_labels = np.linspace(x_tick_min, pval_in.shape[1], num_x_ticks).round(2)
         if np.all(x_tick_labels == x_tick_labels.astype(int)):
             x_tick_labels = x_tick_labels.astype(int)
     elif x_tick_max is not None:
@@ -726,7 +726,7 @@ def plot_p_value_matrix(pval_in, alpha = 0.05, normalize_vals=True, figsize=(9, 
         axes.set_xticks(x_tick_positions + 0.5)
         axes.set_xticklabels(xticklabels, rotation=xlabel_rotation, fontsize=10, ha=ha)
 
-    elif pval.shape[1] > 1:
+    elif pval_in.shape[1] > 1:
         axes.set_xticks(x_tick_positions + 0.5)
         axes.set_xticklabels(x_tick_labels+1, rotation=0, fontsize=10, ha=ha)
 
@@ -734,8 +734,8 @@ def plot_p_value_matrix(pval_in, alpha = 0.05, normalize_vals=True, figsize=(9, 
         axes.set_xticklabels([])
 
     # Define y_ticks
-    y_tick_positions = np.linspace(0, pval.shape[0]-1, num_y_ticks).astype(int)
-    if pval.shape[0]>1:
+    y_tick_positions = np.linspace(0, pval_in.shape[0]-1, num_y_ticks).astype(int)
+    if pval_in.shape[0]>1:
         # Set y-axis tick labels
         if yticklabels is not None:
             if isinstance(yticklabels, str):
@@ -776,8 +776,8 @@ def plot_p_value_matrix(pval_in, alpha = 0.05, normalize_vals=True, figsize=(9, 
         colorbar = plt.colorbar(heatmap.get_children()[0], cax=cax)
         # Set the ticks to range from the bottom to the top of the colorbar
         # Get the minimum and maximum values from your data
-        min_value = np.nanmin(pval)
-        max_value = np.nanmax(pval)
+        min_value = np.nanmin(pval_in)
+        max_value = np.nanmax(pval_in)
 
         # Set ticks with at least 5 values evenly spaced between min and max
         colorbar.set_ticks(np.linspace(min_value, max_value, 5).round(2))
@@ -2213,7 +2213,7 @@ def plot_condition_difference(
     else:
         plt.show()
     
-def plot_p_values_over_time(pval_in, figsize=(8, 3), xlabel="Timepoints", ylabel="P-values (Log Scale)",
+def plot_p_values_over_time(pval, figsize=(8, 3), xlabel="Timepoints", ylabel="P-values (Log Scale)",
                             title_text="P-values over time", fontsize_labels=12, fontsize_title=14, 
                             stimulus_onset=None, x_tick_min=None, x_tick_max=None, 
                             num_x_ticks=5, tick_positions=[0.001, 0.01, 0.05, 0.1, 0.3, 1], num_colors=259, 
@@ -2265,18 +2265,18 @@ def plot_p_values_over_time(pval_in, figsize=(8, 3), xlabel="Timepoints", ylabel
     if stimulus_onset is not None and not isinstance(stimulus_onset, (int, float)):
         raise ValueError("stimulus_onset must be a number.")
     
-    pval = np.squeeze(pval_in.copy())
-    if pval.ndim != 1:
+    pval_in = np.squeeze(pval.copy())
+    if pval_in.ndim != 1:
         # Raise an exception and stop function execution
         raise ValueError("To use the function 'plot_p_values_over_time', the variable for p-values must be one-dimensional.")
     
     # Ensure p-values are within the log range
     pval_min = -3
-    pval = np.clip(pval, 10**pval_min, 1)
+    pval_in = np.clip(pval_in, 10**pval_min, 1)
     # Convert to log scale
     color_array = np.logspace(pval_min, 0, num_colors).reshape(1, -1)
     
-    time_points = np.arange(len(pval))
+    time_points = np.arange(len(pval_in))
 
     if alpha == None:
         # Create custom colormap
@@ -2317,27 +2317,27 @@ def plot_p_values_over_time(pval_in, figsize=(8, 3), xlabel="Timepoints", ylabel
         # Plot the line segments with varying colors
         for i in range(len(time_points)-1):
             # Determine the color for the current segment
-            if scatter_on and pval[i + 1] > alpha:
-                color = cmap(norm(pval[i + 1]))
+            if scatter_on and pval_in[i + 1] > alpha:
+                color = cmap(norm(pval_in[i + 1]))
             else:
-                color = cmap(norm(pval[i]))
+                color = cmap(norm(pval_in[i]))
 
             # Plot the line segment
-            axes.plot([time_points[i], time_points[i + 1]],[pval[i], pval[i + 1]], color=color, linewidth=linewidth)
+            axes.plot([time_points[i], time_points[i + 1]],[pval_in[i], pval_in[i + 1]], color=color, linewidth=linewidth)
 
             if scatter_on:
                 # Handle specific scatter cases
-                if pval[i + 1] > alpha and pval[i] < alpha:
-                    if i > 0 and pval[i - 1] < alpha:
+                if pval_in[i + 1] > alpha and pval_in[i] < alpha:
+                    if i > 0 and pval_in[i - 1] < alpha:
                         pass  # Explicit no-op for clarity
                     else:
-                        axes.scatter([time_points[i]],[pval[i]],c=pval[i],cmap=cmap,norm=norm)
+                        axes.scatter([time_points[i]],[pval_in[i]],c=pval_in[i],cmap=cmap,norm=norm)
     elif plot_style=="scatter":
-        axes.scatter(time_points, pval, c=pval, cmap=cmap, norm=LogNorm(vmin=10**pval_min, vmax=1))
+        axes.scatter(time_points, pval_in, c=pval_in, cmap=cmap, norm=LogNorm(vmin=10**pval_min, vmax=1))
     elif plot_style=="scatter_line":
-        axes.scatter(time_points, pval, c=pval, cmap=cmap, norm=LogNorm(vmin=10**pval_min, vmax=1))    
+        axes.scatter(time_points, pval_in, c=pval_in, cmap=cmap, norm=LogNorm(vmin=10**pval_min, vmax=1))    
             # Draw lines between points
-        axes.plot(time_points, pval, color='black', linestyle='-', linewidth=1)
+        axes.plot(time_points, pval_in, color='black', linestyle='-', linewidth=1)
 
     # Add labels and title
     axes.set_xlabel(xlabel, fontsize=fontsize_labels)
@@ -2345,7 +2345,7 @@ def plot_p_values_over_time(pval_in, figsize=(8, 3), xlabel="Timepoints", ylabel
     axes.set_title(title_text, fontsize=fontsize_title)
     
     # define x_ticks
-    x_tick_positions = np.linspace(0, len(pval), num_x_ticks).astype(int)
+    x_tick_positions = np.linspace(0, len(pval_in), num_x_ticks).astype(int)
 
     # Generate x-tick labels based on user input or default to time points
     if x_tick_min is not None and x_tick_max is not None:
@@ -2353,7 +2353,7 @@ def plot_p_values_over_time(pval_in, figsize=(8, 3), xlabel="Timepoints", ylabel
         if np.all(x_tick_labels == x_tick_labels.astype(int)):
             x_tick_labels = x_tick_labels.astype(int)
     elif x_tick_min is not None:
-        x_tick_labels = np.linspace(x_tick_min, pval.shape[1], num_x_ticks).round(2)
+        x_tick_labels = np.linspace(x_tick_min, pval_in.shape[1], num_x_ticks).round(2)
         if np.all(x_tick_labels == x_tick_labels.astype(int)):
             x_tick_labels = x_tick_labels.astype(int)
     elif x_tick_max is not None:
@@ -2395,7 +2395,7 @@ def plot_p_values_over_time(pval_in, figsize=(8, 3), xlabel="Timepoints", ylabel
         plt.show()
 
 def plot_p_values_bar(
-    pval_in, xticklabels=None, figsize=(9, 4), num_colors=256, xlabel="",
+    pval, xticklabels=None, figsize=(9, 4), num_colors=256, xlabel="",
     ylabel="P-values (Log Scale)", title_text="Bar Plot", fontsize_labels =12,fontsize_title=14,
     tick_positions=[0.001, 0.01, 0.05, 0.1, 0.3, 1], top_adjustment=0.8,
     alpha=0.05, pad_title=25, xlabel_rotation=45, pval_text_height_same=False,
@@ -2405,13 +2405,13 @@ def plot_p_values_bar(
 
     Parameters:
     -----------
-    pval_in (numpy.ndarray):
+    pval (numpy.ndarray):
         Array of p-values to be plotted.
     xticklabels (str or list, optional), default=None:
         Either a list of category labels, or a single string.
-        - If a list: Must match the length of pval_in.
+        - If a list: Must match the length of pval.
         - If a string: Auto-generates labels like "<string> 1", "<string> 2", ..., "<string> N"
-        where N = len(pval_in).
+        where N = len(pval).
         - If None or invalid: Default labels will be used ("Var 1", "Var 2", ..., "Var N").
     figsize (tuple, optional), default=(9, 4):
         Figure size in inches (width, height).
@@ -2441,8 +2441,8 @@ def plot_p_values_bar(
         Whether the p-values of each bar should be plotted at the same height or adjusted to the height of each individual bar
     """
     # Validate input and flatten p-values
-    pval = np.squeeze(pval_in).flatten() if pval_in.shape[0]==1 or pval_in.ndim==2 and np.any(np.array(pval_in.shape) == 1) else pval_in.copy()
-    if pval.ndim != 1:
+    pval_in = np.squeeze(pval).flatten() if pval.shape[0]==1 or pval.ndim==2 and np.any(np.array(pval.shape) == 1) else pval.copy()
+    if pval_in.ndim != 1:
         raise ValueError("The input 'pval_in' must be a one-dimensional array.")
 
 
@@ -2450,20 +2450,20 @@ def plot_p_values_bar(
     if xticklabels is not None:
         if isinstance(xticklabels, str):
             # Generate labels like "Hello 1", "Hello 2", ..., "Hello N"
-            xticklabels = [f"{xticklabels} {i + 1}" for i in range(len(pval))]
+            xticklabels = [f"{xticklabels} {i + 1}" for i in range(len(pval_in))]
         elif not isinstance(xticklabels, list):
             warnings.warn(f"xticklabels must be a list or a string, but got {type(xticklabels)}. Using default labels instead.")
             xticklabels = None
-        elif len(xticklabels) != len(pval):
-            raise ValueError(f"xticklabels length ({len(xticklabels)}) does not match pval length ({len(pval)}).")
+        elif len(xticklabels) != len(pval_in):
+            raise ValueError(f"xticklabels length ({len(xticklabels)}) does not match pval length ({len(pval_in)}).")
 
     # Set default labels if needed
     if xticklabels is None or len(xticklabels) == 0:
-        xticklabels = [f"Var {i + 1}" for i in range(len(pval))]
+        xticklabels = [f"Var {i + 1}" for i in range(len(pval_in))]
 
     # Ensure p-values are within the log range
     pval_min = -3
-    pval = np.clip(pval, 10**pval_min, 1)
+    pval_in = np.clip(pval_in, 10**pval_min, 1)
     # Convert to log scale
     color_array = np.logspace(pval_min, 0, num_colors).reshape(1, -1)
 
@@ -2503,11 +2503,11 @@ def plot_p_values_bar(
     # Plot the bar chart
     fig, axes = plt.subplots(figsize=figsize)
     norm = LogNorm(vmin=10**pval_min, vmax=1)
-    bar_colors = cmap(norm(pval))
-    bars = axes.bar(xticklabels, pval, color=bar_colors)
+    bar_colors = cmap(norm(pval_in))
+    bars = axes.bar(xticklabels, pval_in, color=bar_colors)
 
     # Add data labels above bars
-    max_yval = max(pval) if pval_text_height_same else None
+    max_yval = max(pval_in) if pval_text_height_same else None
     for bar in bars:
         yval = bar.get_height().round(3)
         if yval ==1:
