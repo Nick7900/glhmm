@@ -1103,7 +1103,8 @@ def test_across_state_visits(D_data, R_data , method="multivariate", Nnull_sampl
                     test_statistics[perm,idx] = calculate_statepair_difference(vpath_surrogate, data_t, state_1, 
                                                                                state_2, comparison_statistic)
                 if FLAG_parametric==0:
-                    p_val= np.sum(test_statistics[:,idx] >= test_statistics[0,idx], axis=0) / (Nnull_samples)
+                    p_val= np.sum(test_statistics[:,idx] >= test_statistics[0,idx], axis=0) / (Nnull_samples+1)
+                    
                     pval[state_1-1, state_2-1] = p_val
                     pval[state_2-1, state_1-1] = 1 - p_val
             # Fill numbers in base statistics

@@ -33,8 +33,8 @@ from nilearn.image import resample_to_img
 from nilearn._utils.niimg_conversions import check_niimg_3d
 
 from . import utils
+from . statistics import resolve_figure_directory, generate_filename, override_dict_defaults
 from glhmm.io import *
-
 
 
 
@@ -3764,7 +3764,7 @@ def plot_connectivity_maps(connectivity_map, parcellation_file, filename=None, f
     else:
         plt.show()
 
-def __resolve_figure_directory(save_figures, filename, default_folder="Figures"):
+def __resolve_figure_directory(save_figures, filename, default_folder):
     return resolve_figure_directory(save_figures, filename, default_folder)      
 def __generate_filename(base, index, extension):
     return generate_filename(base, index, extension)     
