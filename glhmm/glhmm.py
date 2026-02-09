@@ -2140,16 +2140,23 @@ class glhmm():
             raise Exception("The model has no mean")
         
         mu = self.mean[k]["Mu"]
+		
+        # sklearn requires 2D input
+        if mu.ndim == 1:
+            mu = mu.reshape(1, -1)
 
-        if self.preproclogY and "pcamodel" in self.preproclogY and orig_space:
-            print('Transforming state mean back into original space')
-            pcamodel = self.preproclogY["pcamodel"]
-            mu = pcamodel.inverse_transform(mu)
-        
-        if self.preproclogY and "icamodel" in self.preproclogY and orig_space:
-            print('Transforming state mean back into original space')
-            icamodel = self.preproclogY["icamodel"]
-            mu = icamodel.inverse_transform(mu)
+        if self.preproclogY and orig_space:
+            if "pcamodel" in self.preproclogY:
+                print("Transforming state mean back into original space (PCA)")
+                mu = self.preproclogY["pcamodel"].inverse_transform(mu)
+
+            if "icamodel" in self.preproclogY:
+                print("Transforming state mean back into original space (ICA)")
+                mu = self.preproclogY["icamodel"].inverse_transform(mu)
+
+        # restore 1D state-mean shape
+        if mu.ndim == 2 and mu.shape[0] == 1:
+            mu = mu.squeeze(0)
 
         return mu
     
