@@ -26,8 +26,7 @@ except:
 # covariance update and the covariance prior in glhmm.py, and Gamma_entropy here. Without blocks these steps create
 # arrays as large as the data (or as Xi) for every state. Results do not depend on the block size (up to
 # floating-point rounding); it only sets memory use and speed. Blocks of a few MB fit in the CPU cache and were
-# fastest in tests (2-16 MB, about 30% faster than no blocks; see tests/validate_batch_memory.ipynb); 8 MB is in the
-# middle of that range.
+# fastest in tests (2-16 MB, about 20-30% faster than no blocks); 8 MB is in the middle of that range.
 BLOCK_MEMORY_MB = 8
 
 def rows_per_block(n_columns):
