@@ -93,7 +93,7 @@ def _compute_session_timepoint(t, D_data, R_data, confounds, method, Nnull_sampl
     test_statistics, reg_pinv = initialize_permutation_matrices(
         method, Nnull_samples, n_p, n_q, D_t, combine_tests, permute_beta, cat_cols,
         n_cca_components=n_cca_components)
-    beta, _, _ = calculate_beta_session(reg_pinv, R_t, D_t, test_indices_list_update, train_indices_list_update)
+    beta, _, _ = calculate_beta_session(D_t, R_t, test_indices_list_update, train_indices_list_update)
     base_stats_t = pval_t = R2_t = None
     F_stats_t = np.zeros(F_shape)
     t_stats_t = np.zeros(t_shape)
@@ -963,7 +963,7 @@ def test_across_sessions_within_subject(D_data, R_data, indices_blocks, method="
         for t in tqdm(range(n_T)) if n_T > 1 and verbose else range(n_T):
             D_t, R_t = deconfound_values(D_data[t, :], R_data, confounds)
             test_statistics, reg_pinv = initialize_permutation_matrices(method, Nnull_samples, n_p, n_q, D_t, combine_tests, permute_beta, category_columns, n_cca_components=n_cca_components)
-            beta, _, _ = calculate_beta_session(reg_pinv, R_t, D_t, test_indices_list_update, train_indices_list_update)
+            beta, _, _ = calculate_beta_session(D_t, R_t, test_indices_list_update, train_indices_list_update)
             for perm in range(Nnull_samples):
                 stats_results = test_statistics_calculations(D_t, R_t, perm, test_statistics, reg_pinv, method, category_columns, combine_tests, None, permute_beta, beta, test_indices_list_update, Nnull_samples=Nnull_samples, n_cca_components=n_cca_components)
                 if perm == 0:
@@ -5152,89 +5152,84 @@ def calculate_manova_f_test(Din, Rin, nan_values, no_t_stats=False):
 
     return f_statistics, t_stats, p_values
 
-def calculate_beta_session(reg_pinv, Rin, Din, test_indices_list, train_indices_list):
+def calculate_beta_session(Din, Rin, test_indices_list, train_indices_list):
     """
-    Calculate beta coefficients for each session. 
-    If there are NaN values the procedure will be done per column.
+    Calculate beta coefficients for each session using a shared ridge-regularized
+    inverse Gram matrix, applying only training-R values per session.
+
+    Using a shared Gram (D_full^T D_full + λI) ensures all session betas are in the
+    same coordinate system so cross-session comparisons in the F-statistic are valid.
+    Only R[train_s] enters each beta, preventing test-R leakage into the estimates.
 
     Parameters:
     --------------
-    reg_pinv (numpy.ndarray): 
-        The regularized pseudo-inverse of D_data.
-    Rin (numpy.ndarray): 
+    Din (numpy.ndarray):
+        Input data matrix for the independent variables.
+    Rin (numpy.ndarray):
         Input data matrix for the dependent variables.
-    indices_blocks (numpy.ndarray): 
-        Marks the indices for each trial within the session.
-        It is a 2D array where each row represents the start and end index for a session.    
-    permute_beta (bool, optional), default=False: 
-        A flag indicating whether to permute beta coefficients.
-    category_limit : int or None, optional, default=10
-        Maximum allowed number of categories for F-test. Acts as a safety measure for columns 
-        with integer values, like age, which may be mistakenly identified as multiple categories.  
+    test_indices_list : list
+        Indices for data points that belong to the test-set for each session.
+    train_indices_list : list
+        Indices for data points that belong to the train-set for each session.
     """
 
-    # detect nan values
+    p = Din.shape[-1]
+    reg_matrix = 0.001 * np.eye(p)
+
     nan_values = np.any(np.isnan(Rin)) or np.any(np.isnan(Din))
 
-    # Do it columnwise if NaN values are detected
     if nan_values:
-        Rin = np.expand_dims(Rin, axis=1) if Rin.ndim==1 else Rin
+        Rin = np.expand_dims(Rin, axis=1) if Rin.ndim == 1 else Rin
         q = Rin.shape[-1]
-        p = Din.shape[-1]
         beta = []
-        if len(train_indices_list)!=Rin.shape[-1]:
-            # Calculate beta coefficients for each session
-            beta_hat = np.zeros((len(train_indices_list[0]),p,q))
-            for q_i in range(q):
-                # Go through each column of R
-                for p_i in range(p):
-                    # Indentify columns with NaN values
-                    R_column = np.expand_dims(Rin[:, q_i],axis=1)
-                    nan_mask = np.isnan(np.expand_dims(Din,axis=1)).any(axis=1) if Din.ndim==1 else np.isnan(Din).any(axis=1)
-                    valid_indices = np.all(~np.isnan(R_column), axis=1) & ~nan_mask
-                    
-                    for session, indices in enumerate(train_indices_list[0]):
-                        #session_beta[idx,p_i] = np.expand_dims(reg_pinv[p_i,indices][valid_indices[indices]] @ Rin[indices, q_i][valid_indices[indices]],axis=1)
-                        beta_hat[session,p_i, q_i] = reg_pinv[p_i,indices][valid_indices[indices]] @ Rin[indices, q_i][valid_indices[indices]]
-            beta.append(np.array(beta_hat))
-        else:
-            # Precompute NaN masks
-            D_expanded = np.expand_dims(Din, axis=1) if Din.ndim == 1 else Din
-            nan_mask = np.isnan(D_expanded).any(axis=1)
-            indices_range = np.arange(len(nan_mask))
-            # Calculate beta coefficients for each session for every predictor
-            for col in range(Rin.shape[-1]):
-                beta_hat = []
-                
-                R_column = Rin[:, col, np.newaxis]  # Avoid redundant expand_dims calls
-                valid_indices = ~np.isnan(R_column).any(axis=1) & ~nan_mask
-                nan_indices = indices_range[~valid_indices]
+        # Shared inverse Gram computed from all valid (non-NaN) rows of Din
+        nan_mask_D = np.isnan(Din).any(axis=1)
+        Din_valid = Din[~nan_mask_D, :]
+        inv_gram = np.linalg.inv(Din_valid.T @ Din_valid + reg_matrix)
+        indices_range = np.arange(Din.shape[0])
 
+        if len(train_indices_list) != q:
+            beta_hat = np.zeros((len(train_indices_list[0]), p, q))
+            for q_i in range(q):
+                nan_mask_R = np.isnan(Rin[:, q_i])
+                valid_mask = ~nan_mask_D & ~nan_mask_R
+                for session, indices in enumerate(train_indices_list[0]):
+                    valid_ses = indices[valid_mask[indices]]
+                    beta_hat[session, :, q_i] = inv_gram @ Din[valid_ses, :].T @ Rin[valid_ses, q_i]
+            beta.append(beta_hat)
+        else:
+            for col in range(q):
+                beta_hat = []
+                nan_mask_R = np.isnan(Rin[:, col])
+                nan_indices = indices_range[nan_mask_D | nan_mask_R]
                 for indices in train_indices_list[col]:
                     idx_ses = indices_range[indices]
-                    valid_ses = idx_ses[~np.isin(idx_ses, nan_indices)]  # Filter out NaN indices
-                    session_beta = reg_pinv[:, valid_ses] @ Rin[valid_ses, col, np.newaxis]
+                    valid_ses = idx_ses[~np.isin(idx_ses, nan_indices)]
+                    session_beta = np.expand_dims(
+                        inv_gram @ Din[valid_ses, :].T @ Rin[valid_ses, col], axis=1)
                     beta_hat.append(session_beta)
-
                 beta.append(np.array(beta_hat))
 
     else:
-        # permute beta and calulate predicted values
-        #beta, test_indices_list, train_indices_list = calculate_ols_beta(reg_pinv, Rin, indices_blocks, category_limit, test_indices_list, train_indices_list)
         beta = []
-        if len(train_indices_list)!=Rin.shape[-1]:
+        # Shared inverse Gram from all trials — same coordinate system for all sessions
+        inv_gram = np.linalg.inv(Din.T @ Din + reg_matrix)
+
+        if len(train_indices_list) != Rin.shape[-1]:
             beta_hat = []
             for indices in train_indices_list[0]:
-                session_beta = reg_pinv[:,indices] @ Rin[indices, :]
+                session_beta = inv_gram @ Din[indices, :].T @ Rin[indices, :]
                 beta_hat.append(session_beta)
             beta.append(np.array(beta_hat))
         else:
             for col in range(Rin.shape[-1]):
                 beta_hat = []
                 for indices in train_indices_list[col]:
-                    session_beta = np.expand_dims(reg_pinv[:,indices] @ Rin[indices, col],axis=1)
+                    session_beta = np.expand_dims(
+                        inv_gram @ Din[indices, :].T @ Rin[indices, col], axis=1)
                     beta_hat.append(session_beta)
                 beta.append(np.array(beta_hat))
+
     return beta, test_indices_list, train_indices_list
         
 def train_test_indices(Rin, Din, indices_blocks, method, category_limit= 10):
@@ -5437,7 +5432,7 @@ def train_test_indices(Rin, Din, indices_blocks, method, category_limit= 10):
                     shared_train_indices = np.array(train_indices)
                     shared_test_indices = np.array(test_indices)
             FLAG_CONTINUOUS = False
-            Flag_shared == 0
+            Flag_shared = 0
 
     for col in range(Rin.shape[-1]):
         indices_list.append(~(~np.isnan(Rin[:,col])))
